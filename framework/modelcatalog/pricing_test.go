@@ -1256,6 +1256,7 @@ func TestNormalizeStreamRequestType(t *testing.T) {
 		{schemas.TranscriptionStreamRequest, schemas.TranscriptionRequest},
 		{schemas.ImageGenerationStreamRequest, schemas.ImageGenerationRequest},
 		{schemas.ImageEditStreamRequest, schemas.ImageEditRequest},
+		{schemas.RealtimeRequest, schemas.RealtimeRequest},             // realtime is its own base type
 		{schemas.ChatCompletionRequest, schemas.ChatCompletionRequest}, // non-stream unchanged
 		{schemas.EmbeddingRequest, schemas.EmbeddingRequest},           // non-stream unchanged
 	}
