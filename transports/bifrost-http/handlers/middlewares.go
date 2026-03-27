@@ -83,7 +83,7 @@ func CorsMiddleware(config *lib.Config) schemas.BifrostHTTPMiddleware {
 				isLocalhostOrigin(origin) ||
 				slices.Contains(config.ClientConfig.AllowedOrigins, origin)
 
-			allowedHeaders := []string{"Content-Type", "Authorization", "X-Requested-With", "X-Stainless-Timeout", "X-Api-Key"}
+			allowedHeaders := []string{"Content-Type", "Authorization", "X-Requested-With", "X-Stainless-Timeout", "X-Api-Key", "X-OpenAI-Agents-SDK"}
 			if slices.Contains(config.ClientConfig.AllowedHeaders, "*") {
 				if credentialed {
 					// Per the Fetch spec, Access-Control-Allow-Headers: * is NOT treated as a
@@ -554,7 +554,19 @@ func validateSession(_ *fasthttp.RequestCtx, store configstore.ConfigStore, toke
 // isInferenceWSEndpoint returns true for WebSocket endpoints that should use
 // standard inference auth (Bearer/Basic/VK) rather than dashboard session tokens.
 func isInferenceWSEndpoint(path string) bool {
-	return path == "/v1/responses" || path == "/v1/realtime"
+	for strings.HasPrefix(path, "/openai/") {
+		path = strings.TrimPrefix(path, "/openai")
+	}
+
+	switch path {
+	case "/v1/responses",
+		"/responses",
+		"/v1/realtime",
+		"/realtime":
+		return true
+	default:
+		return false
+	}
 }
 
 // AuthMiddleware is a middleware that handles authentication for the API.
