@@ -795,6 +795,8 @@ func mergeProviderKeys(provider schemas.ModelProvider, fileKeys, dbKeys []schema
 					BedrockKeyConfig:   dbKey.BedrockKeyConfig,
 					ReplicateKeyConfig: dbKey.ReplicateKeyConfig,
 					VLLMKeyConfig:      dbKey.VLLMKeyConfig,
+					OllamaKeyConfig:    dbKey.OllamaKeyConfig,
+					SGLKeyConfig:       dbKey.SGLKeyConfig,
 					Enabled:            dbKey.Enabled,
 					UseForBatchAPI:     dbKey.UseForBatchAPI,
 				})
@@ -873,6 +875,8 @@ func reconcileProviderKeys(provider schemas.ModelProvider, fileKeys, dbKeys []sc
 					BedrockKeyConfig:   dbKey.BedrockKeyConfig,
 					ReplicateKeyConfig: dbKey.ReplicateKeyConfig,
 					VLLMKeyConfig:      dbKey.VLLMKeyConfig,
+					OllamaKeyConfig:    dbKey.OllamaKeyConfig,
+					SGLKeyConfig:       dbKey.SGLKeyConfig,
 					Enabled:            dbKey.Enabled,
 					UseForBatchAPI:     dbKey.UseForBatchAPI,
 				})
@@ -3350,16 +3354,58 @@ func (c *Config) GetAllKeys() ([]configstoreTables.TableKey, error) {
 			if blacklisted == nil {
 				blacklisted = []string{}
 			}
-			keys = append(keys, configstoreTables.TableKey{
+			configStoreKey := configstoreTables.TableKey{
 				KeyID:             key.ID,
 				Name:              key.Name,
-				Value:             *schemas.NewEnvVar(""),
+				Value:             *key.Value.Redacted(),
 				Models:            models,
 				BlacklistedModels: blacklisted,
 				Weight:            bifrost.Ptr(key.Weight),
 				Provider:          string(providerKey),
 				ConfigHash:        key.ConfigHash,
-			})
+			}
+			if key.AzureKeyConfig != nil {
+				configStoreKey.AzureKeyConfig = key.AzureKeyConfig
+				configStoreKey.AzureKeyConfig.Endpoint = *key.AzureKeyConfig.Endpoint.Redacted()
+				configStoreKey.AzureKeyConfig.APIVersion = key.AzureKeyConfig.APIVersion.Redacted()
+				configStoreKey.AzureKeyConfig.ClientID = key.AzureKeyConfig.ClientID.Redacted()
+				configStoreKey.AzureKeyConfig.ClientSecret = key.AzureKeyConfig.ClientSecret.Redacted()
+				configStoreKey.AzureKeyConfig.TenantID = key.AzureKeyConfig.TenantID.Redacted()
+			}
+			if key.BedrockKeyConfig != nil {
+				configStoreKey.BedrockKeyConfig = key.BedrockKeyConfig
+				configStoreKey.BedrockKeyConfig.ARN = key.BedrockKeyConfig.ARN.Redacted()
+				configStoreKey.BedrockKeyConfig.AccessKey = *key.BedrockKeyConfig.AccessKey.Redacted()
+				configStoreKey.BedrockKeyConfig.ExternalID = key.BedrockKeyConfig.ExternalID.Redacted()
+				configStoreKey.BedrockKeyConfig.Region = key.BedrockKeyConfig.Region.Redacted()
+				configStoreKey.BedrockKeyConfig.RoleARN = key.BedrockKeyConfig.RoleARN.Redacted()
+				configStoreKey.BedrockKeyConfig.RoleSessionName = key.BedrockKeyConfig.RoleSessionName.Redacted()
+				configStoreKey.BedrockKeyConfig.SecretKey = *key.BedrockKeyConfig.SecretKey.Redacted()
+				configStoreKey.BedrockKeyConfig.SessionToken = key.BedrockKeyConfig.SessionToken.Redacted()
+			}
+			if key.VertexKeyConfig != nil {
+				configStoreKey.VertexKeyConfig = key.VertexKeyConfig
+				configStoreKey.VertexKeyConfig.ProjectID = *key.VertexKeyConfig.ProjectID.Redacted()
+				configStoreKey.VertexKeyConfig.ProjectNumber = *key.VertexKeyConfig.ProjectNumber.Redacted()
+				configStoreKey.VertexKeyConfig.Region = *key.VertexKeyConfig.Region.Redacted()
+				configStoreKey.VertexKeyConfig.AuthCredentials = *key.VertexKeyConfig.AuthCredentials.Redacted()
+			}
+			if key.ReplicateKeyConfig != nil {
+				configStoreKey.ReplicateKeyConfig = key.ReplicateKeyConfig
+			}
+			if key.VLLMKeyConfig != nil {
+				configStoreKey.VLLMKeyConfig = key.VLLMKeyConfig
+				configStoreKey.VLLMKeyConfig.URL = *key.VLLMKeyConfig.URL.Redacted()
+			}
+			if key.OllamaKeyConfig != nil {
+				configStoreKey.OllamaKeyConfig = key.OllamaKeyConfig
+				configStoreKey.OllamaKeyConfig.URL = *key.OllamaKeyConfig.URL.Redacted()
+			}
+			if key.SGLKeyConfig != nil {
+				configStoreKey.SGLKeyConfig = key.SGLKeyConfig
+				configStoreKey.SGLKeyConfig.URL = *key.SGLKeyConfig.URL.Redacted()
+			}
+			keys = append(keys, configStoreKey)
 		}
 	}
 

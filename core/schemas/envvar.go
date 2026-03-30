@@ -117,6 +117,9 @@ func (e *EnvVar) Equals(other *EnvVar) bool {
 
 // Redacted returns a new SecretKey with the value redacted.
 func (e *EnvVar) Redacted() *EnvVar {
+	if e == nil {
+		return nil
+	}
 	if e.Val == "" {
 		return &EnvVar{
 			Val:     "",
