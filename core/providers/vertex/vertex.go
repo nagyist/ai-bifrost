@@ -416,10 +416,7 @@ func (provider *VertexProvider) ChatCompletion(ctx *schemas.BifrostContext, key 
 				}
 				// Inject beta headers into body as anthropic_beta (Vertex uses body field, not HTTP header)
 				if extraHeaders, ok := ctx.Value(schemas.BifrostContextKeyExtraHeaders).(map[string][]string); ok {
-					betaHeaders, betaErr := anthropic.FilterBetaHeadersForProvider(extraHeaders["anthropic-beta"], schemas.Vertex)
-					if betaErr != nil {
-						return nil, fmt.Errorf("unsupported beta header: %w", betaErr)
-					}
+					betaHeaders := anthropic.FilterBetaHeadersForProvider(extraHeaders[anthropic.AnthropicBetaHeader], schemas.Vertex, provider.networkConfig.BetaHeaderOverrides)
 					if len(betaHeaders) > 0 {
 						rawBody, err = providerUtils.SetJSONField(rawBody, "anthropic_beta", betaHeaders)
 						if err != nil {
@@ -555,7 +552,9 @@ func (provider *VertexProvider) ChatCompletion(ctx *schemas.BifrostContext, key 
 
 	req.Header.SetMethod(http.MethodPost)
 	req.Header.SetContentType("application/json")
-	providerUtils.SetExtraHeaders(ctx, req, provider.networkConfig.ExtraHeaders, nil)
+	// Skip anthropic-beta from context headers — Anthropic models on Vertex use the
+	// anthropic_beta body field instead, and other model families don't use it.
+	providerUtils.SetExtraHeaders(ctx, req, provider.networkConfig.ExtraHeaders, []string{anthropic.AnthropicBetaHeader})
 
 	// If auth query is set, add it to the URL
 	// Otherwise, get the oauth2 token and set the Authorization header
@@ -787,10 +786,7 @@ func (provider *VertexProvider) ChatCompletionStream(ctx *schemas.BifrostContext
 				}
 				// Inject beta headers into body as anthropic_beta (Vertex uses body field, not HTTP header)
 				if extraHeaders, ok := ctx.Value(schemas.BifrostContextKeyExtraHeaders).(map[string][]string); ok {
-					betaHeaders, betaErr := anthropic.FilterBetaHeadersForProvider(extraHeaders["anthropic-beta"], schemas.Vertex)
-					if betaErr != nil {
-						return nil, fmt.Errorf("unsupported beta header: %w", betaErr)
-					}
+					betaHeaders := anthropic.FilterBetaHeadersForProvider(extraHeaders[anthropic.AnthropicBetaHeader], schemas.Vertex, provider.networkConfig.BetaHeaderOverrides)
 					if len(betaHeaders) > 0 {
 						rawBody, err = providerUtils.SetJSONField(rawBody, "anthropic_beta", betaHeaders)
 						if err != nil {
@@ -857,6 +853,7 @@ func (provider *VertexProvider) ChatCompletionStream(ctx *schemas.BifrostContext
 			jsonData,
 			headers,
 			provider.networkConfig.ExtraHeaders,
+			provider.networkConfig.BetaHeaderOverrides,
 			providerUtils.ShouldSendBackRawRequest(ctx, provider.sendBackRawRequest),
 			providerUtils.ShouldSendBackRawResponse(ctx, provider.sendBackRawResponse),
 			providerName,
@@ -1030,7 +1027,7 @@ func (provider *VertexProvider) Responses(ctx *schemas.BifrostContext, key schem
 	}
 
 	if schemas.IsAnthropicModel(deployment) {
-		jsonBody, bifrostErr := getRequestBodyForAnthropicResponses(ctx, request, deployment, providerName, false, false)
+		jsonBody, bifrostErr := getRequestBodyForAnthropicResponses(ctx, request, deployment, providerName, false, false, provider.networkConfig.BetaHeaderOverrides)
 		if bifrostErr != nil {
 			return nil, bifrostErr
 		}
@@ -1355,7 +1352,7 @@ func (provider *VertexProvider) ResponsesStream(ctx *schemas.BifrostContext, pos
 			return nil, providerUtils.NewConfigurationError("project ID is not set", providerName)
 		}
 
-		jsonBody, bifrostErr := getRequestBodyForAnthropicResponses(ctx, request, deployment, providerName, true, false)
+		jsonBody, bifrostErr := getRequestBodyForAnthropicResponses(ctx, request, deployment, providerName, true, false, provider.networkConfig.BetaHeaderOverrides)
 		if bifrostErr != nil {
 			return nil, bifrostErr
 		}
@@ -1401,6 +1398,7 @@ func (provider *VertexProvider) ResponsesStream(ctx *schemas.BifrostContext, pos
 			jsonBody,
 			headers,
 			provider.networkConfig.ExtraHeaders,
+			provider.networkConfig.BetaHeaderOverrides,
 			providerUtils.ShouldSendBackRawRequest(ctx, provider.sendBackRawRequest),
 			providerUtils.ShouldSendBackRawResponse(ctx, provider.sendBackRawResponse),
 			provider.GetProviderKey(),
@@ -2889,7 +2887,7 @@ func (provider *VertexProvider) CountTokens(ctx *schemas.BifrostContext, key sch
 	)
 
 	if schemas.IsAnthropicModel(deployment) {
-		jsonBody, bifrostErr = getRequestBodyForAnthropicResponses(ctx, request, deployment, providerName, false, true)
+		jsonBody, bifrostErr = getRequestBodyForAnthropicResponses(ctx, request, deployment, providerName, false, true, provider.networkConfig.BetaHeaderOverrides)
 		if bifrostErr != nil {
 			return nil, bifrostErr
 		}
