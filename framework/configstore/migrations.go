@@ -350,6 +350,15 @@ func triggerMigrations(ctx context.Context, db *gorm.DB) error {
 	if err := migrationAddMultiBudgetTables(ctx, db); err != nil {
 		return err
 	}
+	if err := migrationAddPerUserOAuthTables(ctx, db); err != nil {
+		return err
+	}
+	if err := migrationAddPerUserOAuthServerTables(ctx, db); err != nil {
+		return err
+	}
+	if err := migrationAddIdentityColumnsToPerUserOAuth(ctx, db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -5311,6 +5320,7 @@ func migrationAddBudgetCalendarAlignedColumn(ctx context.Context, db *gorm.DB) e
 	return nil
 }
 
+<<<<<<< HEAD
 // migrationAddMultiBudgetTables creates junction tables for multi-budget support and backfills existing data.
 func migrationAddMultiBudgetTables(ctx context.Context, db *gorm.DB) error {
 	m := migrator.New(db, migrator.DefaultOptions, []*migrator.Migration{{
@@ -5412,11 +5422,25 @@ func migrationAddMultiBudgetTables(ctx context.Context, db *gorm.DB) error {
 			_ = tx.Exec("ALTER TABLE governance_virtual_keys DROP COLUMN IF EXISTS budget_id")
 			_ = tx.Exec("ALTER TABLE governance_virtual_key_provider_configs DROP COLUMN IF EXISTS budget_id")
 
+=======
+func migrationAddPerUserOAuthTables(ctx context.Context, db *gorm.DB) error {
+	m := migrator.New(db, migrator.DefaultOptions, []*migrator.Migration{{
+		ID: "add_per_user_oauth_tables",
+		Migrate: func(tx *gorm.DB) error {
+			tx = tx.WithContext(ctx)
+			if err := tx.AutoMigrate(&tables.TableOauthUserSession{}); err != nil {
+				return fmt.Errorf("failed to create oauth_user_sessions table: %w", err)
+			}
+			if err := tx.AutoMigrate(&tables.TableOauthUserToken{}); err != nil {
+				return fmt.Errorf("failed to create oauth_user_tokens table: %w", err)
+			}
+>>>>>>> 95d92198b (user level oauth for mcp gateway)
 			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			tx = tx.WithContext(ctx)
 			mg := tx.Migrator()
+<<<<<<< HEAD
 			if mg.HasColumn(&tables.TableBudget{}, "virtual_key_id") {
 				if err := mg.DropColumn(&tables.TableBudget{}, "virtual_key_id"); err != nil {
 					return err
@@ -5425,13 +5449,91 @@ func migrationAddMultiBudgetTables(ctx context.Context, db *gorm.DB) error {
 			if mg.HasColumn(&tables.TableBudget{}, "provider_config_id") {
 				if err := mg.DropColumn(&tables.TableBudget{}, "provider_config_id"); err != nil {
 					return err
+=======
+			if mg.HasTable(&tables.TableOauthUserToken{}) {
+				if err := mg.DropTable(&tables.TableOauthUserToken{}); err != nil {
+					return fmt.Errorf("failed to drop oauth_user_tokens table: %w", err)
+				}
+			}
+			if mg.HasTable(&tables.TableOauthUserSession{}) {
+				if err := mg.DropTable(&tables.TableOauthUserSession{}); err != nil {
+					return fmt.Errorf("failed to drop oauth_user_sessions table: %w", err)
+>>>>>>> 95d92198b (user level oauth for mcp gateway)
 				}
 			}
 			return nil
 		},
 	}})
 	if err := m.Migrate(); err != nil {
+<<<<<<< HEAD
 		return fmt.Errorf("error running add_multi_budget_tables migration: %s", err.Error())
+=======
+		return fmt.Errorf("error running add_per_user_oauth_tables migration: %s", err.Error())
+	}
+	return nil
+}
+
+func migrationAddPerUserOAuthServerTables(ctx context.Context, db *gorm.DB) error {
+	m := migrator.New(db, migrator.DefaultOptions, []*migrator.Migration{{
+		ID: "add_per_user_oauth_server_tables",
+		Migrate: func(tx *gorm.DB) error {
+			tx = tx.WithContext(ctx)
+			if err := tx.AutoMigrate(&tables.TablePerUserOAuthClient{}); err != nil {
+				return fmt.Errorf("failed to create oauth_per_user_clients table: %w", err)
+			}
+			if err := tx.AutoMigrate(&tables.TablePerUserOAuthSession{}); err != nil {
+				return fmt.Errorf("failed to create oauth_per_user_sessions table: %w", err)
+			}
+			if err := tx.AutoMigrate(&tables.TablePerUserOAuthCode{}); err != nil {
+				return fmt.Errorf("failed to create oauth_per_user_codes table: %w", err)
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			tx = tx.WithContext(ctx)
+			mg := tx.Migrator()
+			for _, table := range []interface{}{
+				&tables.TablePerUserOAuthCode{},
+				&tables.TablePerUserOAuthSession{},
+				&tables.TablePerUserOAuthClient{},
+			} {
+				if mg.HasTable(table) {
+					if err := mg.DropTable(table); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+	}})
+	if err := m.Migrate(); err != nil {
+		return fmt.Errorf("error running add_per_user_oauth_server_tables migration: %s", err.Error())
+	}
+	return nil
+}
+
+func migrationAddIdentityColumnsToPerUserOAuth(ctx context.Context, db *gorm.DB) error {
+	m := migrator.New(db, migrator.DefaultOptions, []*migrator.Migration{{
+		ID: "add_identity_columns_to_per_user_oauth",
+		Migrate: func(tx *gorm.DB) error {
+			tx = tx.WithContext(ctx)
+			// Add identity columns to oauth_per_user_sessions
+			if err := tx.AutoMigrate(&tables.TablePerUserOAuthSession{}); err != nil {
+				return fmt.Errorf("failed to add identity columns to oauth_per_user_sessions: %w", err)
+			}
+			// Add identity columns to oauth_user_tokens
+			if err := tx.AutoMigrate(&tables.TableOauthUserToken{}); err != nil {
+				return fmt.Errorf("failed to add identity columns to oauth_user_tokens: %w", err)
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return nil // Column additions are safe to leave in place
+		},
+	}})
+	if err := m.Migrate(); err != nil {
+		return fmt.Errorf("error running add_identity_columns_to_per_user_oauth migration: %s", err.Error())
+>>>>>>> 95d92198b (user level oauth for mcp gateway)
 	}
 	return nil
 }
